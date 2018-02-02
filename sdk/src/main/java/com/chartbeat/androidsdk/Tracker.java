@@ -7,6 +7,7 @@ package com.chartbeat.androidsdk;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.text.TextUtils;
 
 import java.util.Collection;
@@ -96,10 +97,12 @@ public final class Tracker {
     private static Subscription userInteractSubscription;
     private static final int USER_INTERACT_WINDOW_IN_MILLISECONDS = 500;
 
+    private static boolean disableOreo = false;
+
     /** ----------- Public static functions -------------- */
 
     /**
-     * initializes the tracker. If the tracker has already been initialized,
+     * Initializes the tracker. If the tracker has already been initialized,
      * this call will be ignored.
      *
      * @param accountId
@@ -124,6 +127,23 @@ public final class Tracker {
         }
 
         startSDK(accountId, domain, context);
+    }
+
+    /**
+     * Initializes the tracker without Android O support. If the tracker has already been initialized,
+     * this call will be ignored.
+     *
+     * @param accountId
+     *            your account id on the Chartbeat system. e.g. "12345"
+     * @param domain
+     *            the chartbeat dashboard domain name you want to report analytics data to, e.g.
+     *            "mynewspaper.com"
+     * @param context
+     *            the context.
+     */
+    public static void setupTrackerWithoutOreo(String accountId, String domain, Context context) {
+        disableOreo = true;
+        setupTracker(accountId, domain, context);
     }
 
     private static void startSDK(String accountID, String domain, Context context) {
@@ -611,6 +631,10 @@ public final class Tracker {
         sendServiceSignal(intent);
     }
 
+    private static boolean disabledForOreo() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && disableOreo;
+    }
+
     public static void didInit() {
         if (appContext == null && TextUtils.isEmpty(accountID)) {
             throw new IllegalStateException("Chartbeat: SDK has not been initialized with an Account ID");
@@ -624,6 +648,12 @@ public final class Tracker {
     }
 
     private static void sendServiceSignal(Intent intent) {
+        if (disabledForOreo()) {
+            return;
+        }
+
+        Logger.e(TAG, "ACTIVE");
+
         try {
             appContext.startService(intent);
         } catch (IllegalStateException e) {
